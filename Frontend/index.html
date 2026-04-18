@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Classify fabric fiber types from macro-lens photos using AI" />
+    <title>PTT Fabric Fiber Classifier</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>PTT Fabric Fiber Classifier</h1>
+            <div id="device-status" class="device-status">
+                <span class="status-dot offline"></span>
+                <span class="status-label">Device</span>
+            </div>
+        </header>
+
+        <!-- Mode toggle banner -->
+        <div class="mode-banner">
+            <span class="mode-label" id="mode-label">Classify Mode</span>
+            <button id="btn-mode-toggle" class="btn-mode-toggle" title="Switch mode">
+                <span id="mode-toggle-text">Switch to Training</span>
+            </button>
+        </div>
+
+        <!-- ==================== CLASSIFY SCREENS ==================== -->
+
+        <!-- Capture Screen -->
+        <section id="capture-screen" class="screen active">
+            <div class="card neon-card permission-card" style="text-align: center; padding: 3rem 1.5rem;">
+                <h2 style="margin-bottom: 1rem;">Ready to Classify</h2>
+                <p style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: 2rem;">
+                    Take a close-up photo of the fabric. Use your camera's optical zoom for best texture detail.
+                </p>
+                <input type="file" id="native-camera-input" accept="image/*" capture="environment" style="display: none;" />
+                <input type="file" id="gallery-input" accept="image/*" style="display: none;" />
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <button id="btn-open-camera" class="btn btn-outline" style="flex: 1;">
+                        📷 Take Photo
+                    </button>
+                    <button id="btn-open-gallery" class="btn btn-outline" style="flex: 1;">
+                        🖼️ From Gallery
+                    </button>
+                </div>
+                <canvas id="capture-canvas" style="display: none;"></canvas>
+            </div>
+        </section>
+
+        <!-- Result Screen -->
+        <section id="result-screen" class="screen">
+            <div class="captured-preview-wrapper">
+                <img id="captured-preview" alt="Captured fabric" />
+            </div>
+            <div id="result-card" class="card neon-card result-card">
+                <!-- Loading state -->
+                <div id="result-loading" class="result-loading">
+                    <div class="spinner"></div>
+                    <div class="loading-steps">
+                        <div class="loading-step" id="step-inference">
+                            <span class="step-spinner"></span>
+                            Analyzing image…
+                        </div>
+                        <div class="loading-step" id="step-device">
+                            <span class="step-spinner"></span>
+                            Reading sensors…
+                        </div>
+                    </div>
+                </div>
+                <!-- Success state -->
+                <div id="result-success" class="result-content hidden">
+                    <div class="result-badge">
+                        <span class="badge-label">Predicted Class</span>
+                        <span id="result-class" class="badge-value"></span>
+                    </div>
+                    <div class="confidence-bar-wrapper">
+                        <div class="confidence-label">
+                            <span>Confidence</span>
+                            <span id="result-confidence-text"></span>
+                        </div>
+                        <div class="confidence-bar">
+                            <div id="result-confidence-bar" class="confidence-fill"></div>
+                        </div>
+                    </div>
+                    <div id="other-predictions" class="other-predictions"></div>
+
+                    <!-- Sensor Readings -->
+                    <div id="sensor-section" class="sensor-section hidden">
+                        <h4 class="sensor-heading">Sensor Readings</h4>
+                        <div class="sensor-grid">
+                            <div class="sensor-item">
+                                <span class="sensor-icon">⚡</span>
+                                <span class="sensor-value" id="sensor-charge">—</span>
+                                <span class="sensor-unit">V</span>
+                                <span class="sensor-name">Static Charge</span>
+                            </div>
+                            <div class="sensor-item">
+                                <span class="sensor-icon">🌡️</span>
+                                <span class="sensor-value" id="sensor-temp">—</span>
+                                <span class="sensor-unit">°C</span>
+                                <span class="sensor-name">Temperature</span>
+                            </div>
+                            <div class="sensor-item">
+                                <span class="sensor-icon">💧</span>
+                                <span class="sensor-value" id="sensor-humidity">—</span>
+                                <span class="sensor-unit">%</span>
+                                <span class="sensor-name">Humidity</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Device offline note -->
+                    <div id="device-offline-note" class="device-offline-note hidden">
+                        <span>⚠️ Sensor device was offline — showing image classification only</span>
+                    </div>
+                </div>
+                <!-- Error state -->
+                <div id="result-error" class="result-content hidden">
+                    <div class="error-icon">⚠️</div>
+                    <p id="error-message">Something went wrong.</p>
+                </div>
+            </div>
+            <div class="result-actions">
+                <button id="btn-retake" class="btn btn-outline">
+                    Classify Another
+                </button>
+            </div>
+        </section>
+
+        <!-- ==================== TRAINING SCREENS ==================== -->
+
+        <!-- Training: Capture Screen -->
+        <section id="train-capture-screen" class="screen">
+            <div class="card neon-card permission-card" style="text-align: center; padding: 3rem 1.5rem;">
+                <h2 style="margin-bottom: 1rem;">Collect Training Image</h2>
+                <p style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: 2rem;">
+                    Take a clear, close-up photo of the fabric. You'll label it on the next step.
+                </p>
+                <input type="file" id="train-camera-input" accept="image/*" capture="environment" style="display: none;" />
+                <input type="file" id="train-gallery-input" accept="image/*" multiple style="display: none;" />
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <button id="btn-train-photo" class="btn btn-outline" style="flex: 1;">
+                        📷 Take Photo
+                    </button>
+                    <button id="btn-train-gallery" class="btn btn-outline" style="flex: 1;">
+                        🖼️ From Gallery
+                    </button>
+                </div>
+                <canvas id="train-canvas" style="display: none;"></canvas>
+            </div>
+        </section>
+
+        <!-- Training: Label & Upload Screen -->
+        <section id="train-label-screen" class="screen">
+            <div class="captured-preview-wrapper">
+                <img id="train-preview" alt="Training sample" />
+            </div>
+            <div id="train-multi-count" class="hidden" style="text-align: center; margin-top: 8px; font-weight: 500; color: var(--primary);"></div>
+            <div class="card neon-card" style="padding: 1.5rem;">
+                <p class="class-picker-title">Select fabric class</p>
+                <div class="class-grid" id="class-grid">
+                    <!-- Populated by JS -->
+                </div>
+                <!-- Drive upload -->
+                <div id="train-drive-section" style="margin-top: 1.5rem;">
+                    <div id="google-signin-btn" style="margin-bottom: 1rem;"></div>
+                    <button id="btn-upload-drive" class="btn btn-outline" style="width: 100%;" disabled>
+                        Upload to Google Drive
+                    </button>
+                    <div id="upload-status" class="upload-status hidden"></div>
+                </div>
+            </div>
+            <div class="result-actions">
+                <button id="btn-train-retake" class="btn btn-outline">
+                    Retake
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
