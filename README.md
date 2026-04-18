@@ -145,4 +145,4 @@ A live demonstration of the full system — from fabric photo capture to AI clas
 
 ---
 
-## 👥 Batch 53 — PTT Project
+## 👥 Batch 53 — Prototyping and Testing Project
